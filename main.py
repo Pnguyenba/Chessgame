@@ -1,11 +1,12 @@
-import pygame, pygame_menu, sys
+from re import S, T
+import pygame, pygame_menu, sys, ctypes
 from data.constants import *
 import engine
 
 pygame.init()    
 screen = pygame.display.set_mode((WIDTH , HEIGHT))
+screen.fill(pygame.Color('white'))
 pygame.display.set_caption('Chess Game')
-gsta = engine.GameState()
 
 IMAGES={}
 
@@ -14,18 +15,19 @@ def loadImages():
     for item in pie:
         IMAGES[item] = pygame.transform.scale(pygame.image.load('data/images/'+ item +'.png'), (PIE_SIZE,PIE_SIZE))
 
-def drawGameState(screen, gsta):
+def drawGameState(screen, gsta,validMoves, sqSelected):
     drawBoard(screen)
+    hightlightSq(screen, gsta, validMoves, sqSelected)
     drawPiece(screen,gsta.board)
     
 def drawBoard(screen):
+    global colors
     colors = [pygame.Color(WHITE), pygame.Color(GRAY)]
     for row in range(DIMENSIONS):
         for col in range(DIMENSIONS):
             color = colors[( (row+col) % 2 )]
             pygame.draw.rect(screen, color, pygame.Rect(col * PIE_SIZE, row * PIE_SIZE, PIE_SIZE, PIE_SIZE))
             
-
 def drawPiece(screen,board):
     for row in range(DIMENSIONS):
         for col in range(DIMENSIONS):
@@ -37,6 +39,49 @@ def set_difficulty(value, difficulty):
     # Do the job here !
     pass
 
+def hightlightSq(screen, gsta, validMoves, sqSelected):
+    if sqSelected != ():
+        row, col = sqSelected
+        if gsta.board[row][col][0] ==  ('w' if gsta.whiteMove else 'b'):
+            #highlight ô đang chọn
+            s = pygame.Surface((PIE_SIZE, PIE_SIZE))
+            s.set_alpha(100)
+            s.fill(pygame.Color('blue'))
+            screen.blit(s, (col * PIE_SIZE, row * PIE_SIZE))
+            #highlight những ô đi được
+            s.fill(pygame.Color('yellow'))
+            for move in validMoves:
+                if move.startRow == row and move.startCol == col:
+                    screen.blit(s, (move.endCol* PIE_SIZE, move.endRow * PIE_SIZE))
+
+def animateMove(move, screen, board, clock):
+    global colors
+    coords = []
+    dR = move.endRow - move.startRow
+    dC = move.endCol - move.startCol
+    famesPerSq = 20 if (move.endRow != move.startRow) and (move.endCol != move.startCol) else 10        
+    fameCount = (abs(dR) - abs(dC)) * famesPerSq +1
+    for fame in range(fameCount):
+        row, col = (move.startRow + dR*fame/fameCount, move.startCol + dC*fame/fameCount)
+        drawBoard(screen)
+        drawPiece(screen, board)
+        color = colors[(move.endRow - move.endCol) % 2]
+        endSq = pygame.Rect(move.endCol * PIE_SIZE,move.endRow * PIE_SIZE, PIE_SIZE, PIE_SIZE)
+        pygame.draw.rect(screen, color, endSq)
+
+        if move.pieCaptured != '--':
+            screen.blit(IMAGES[move.pieCaptured], endSq)
+
+        screen.blit(IMAGES[move.pieMoved], pygame.Rect( col * PIE_SIZE, row * PIE_SIZE, PIE_SIZE, PIE_SIZE))
+        pygame.display.flip()
+        clock.tick(FPS)
+
+def drawText(screen, text):
+    font = pygame.font.SysFont('tahoma', 26, True, True)
+    message = font.render(text, 0, pygame.Color(D_RED))
+    messageLocation = pygame.Rect(0, 0, WIDTH, HEIGHT).move(WIDTH/2 - message.get_width()/2, HEIGHT/2 - message.get_height()/2)
+    screen.blit(message, messageLocation)
+
 def menuScreen(screen):
     menu = pygame_menu.Menu('Welcome', 400, 300,
                         theme=pygame_menu.themes.THEME_BLUE)
@@ -46,71 +91,90 @@ def menuScreen(screen):
     menu.add.button('Quit', pygame_menu.events.EXIT)
     menu.mainloop(screen)
 
-
 def GameStart(screen):
     run = True
     clock = pygame.time.Clock()
+    gsta = engine.GameState()
+    validMoves = gsta.getValidMove()
     loadImages()
-    screen.fill(pygame.Color('white'))
 
+    animate = True
     pieSelected = ()
     playerClick = []
-    validMoves = gsta.getAllValidMove()
     moveMade = False
+    gameOver = False
 
     while run:
-        clock.tick(FPS)
+        if len(validMoves) == 0:
+            gameOver = True
 
-        for event in pygame.event.get():
+        if not gameOver:
+            for event in pygame.event.get():
             #
-            if event.type == pygame.QUIT:
-                run = False
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                # xử lí nhấp chuột
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    location = pygame.mouse.get_pos()
+                    col = location[0]//PIE_SIZE
+                    row = location[1]//PIE_SIZE
+                    
+                    # hủy khi double click tại 1 ô
+                    if pieSelected == (row,col):
+                        pieSelected = ()
+                        playerClick = []
+                    else:
+                        pieSelected = (row,col)
+                        playerClick.append(pieSelected)
+                    if len(playerClick) == 2:
+                        move = engine.Move(playerClick[0], playerClick[1],gsta.board)
+                        for i in range(len(validMoves)):                   
+                            if move == validMoves[i]:
+                                gsta.makeMove(validMoves[i])
+                                moveMade = True
+                                animate = True
+                                pieSelected = ()
+                                playerClick = []
+                        if not moveMade:
+                            playerClick = [pieSelected]
 
-            # xử lí nhấp chuột
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                location = pygame.mouse.get_pos()
-                col = location[0]//PIE_SIZE
-                row = location[1]//PIE_SIZE
-                
-                # hủy khi double click tại 1 ô
-                if pieSelected == (row,col):
-                    pieSelected = ()
-                    playerClick = []
-                else:
-                    pieSelected = (row,col)
-                    playerClick.append(pieSelected)
+                # xữ lí nhập từ phím
+                elif event.type == pygame.KEYDOWN:
+                    # undo move (phím : Z )
+                    if event.key == pygame.K_z:                   
+                        gsta.undoMove()
+                        moveMade = True
+                        animate = False
 
-                if len(playerClick) == 2:
-                    move = engine.Move(playerClick[0], playerClick[1],gsta.board)
-                    for i in range(len(validMoves)):                   
-                        if move == validMoves[i]:
-                            gsta.makeMove(validMoves[i])
-                            moveMade = True
-                            pieSelected = ()
-                            playerClick = []
-                    if not moveMade:
-                        playerClick = [pieSelected]
+                    if event.key == pygame.K_r:
+                        gsta = engine.GameState()
+                        animate = True
+                        pieSelected = ()
+                        playerClick = []
+                        validMoves = gsta.getValidMove()
+                        moveMade = False
+                    """
+                    if event.key == pygame.K_ESCAPE:
+                        menuScreen(screen)"""
 
-            # xữ lí nhập từ phím
-            elif event.type == pygame.KEYDOWN:
-                # undo move (phím : Z )
-                if event.key == pygame.K_z:
-                    gsta.undoMove()
-                    moveMade = True
-                """
-                if event.key == pygame.K_ESCAPE:
-                    menuScreen(screen)"""
-
+        else:
+            if gsta.whiteMove():
+                drawText(screen, 'Trắng bị chiếu tướng !(nhấn ''r'' để chơi lại')
+            else:
+                drawText(screen, 'Đen bị chiếu tướng !(nhấn ''r'' để chơi lại')
 
         if moveMade:
+            """if animate:
+                animateMove(gsta.moveLog[-1], screen, gsta.board, clock)"""
             validMoves = gsta.getValidMove()
+            print(gsta.inCheck())
             moveMade = False
 
-        drawGameState(screen,gsta)
+        drawGameState(screen,gsta, validMoves, pieSelected)  
+        clock.tick(FPS)
         pygame.display.flip()
 
-
-    pygame.quit()
 
 
 if __name__ == "__main__":
