@@ -1,5 +1,3 @@
-from tabnanny import check
-from turtle import update
 from data.constants import *
 
 
@@ -152,7 +150,7 @@ class GameState():
                 self.wKingLocation = (move.startRow,move.startCol)
             elif move.pieMoved == 'bK':
                 self.bKingLocation = (move.startRow,move.startCol)
-    
+
             #undo nước bắt chốt
             if move.isEnPassantMove:
                 self.board[move.endRow][move.endCol] = '--'
