@@ -1,0 +1,556 @@
+from tabnanny import check
+from turtle import update
+from data.constants import *
+
+
+class GameState():
+    def __init__(self):
+
+        self.board =[
+            #  a    b    c    d    e    f     g    h     
+            ['bR','bN','bB','bQ','bK','bB','bN','bR'],  #1
+            ['bp','bp','bp','bp','bp','bp','bp','bp'],  #2
+            ['--','--','--','--','--','--','--','--'],  #3
+            ['--','--','--','--','--','--','--','--'],  #4
+            ['--','--','--','--','--','--','--','--'],  #5
+            ['--','--','--','--','--','--','--','--'],  #6
+            ['wp','wp','wp','wp','wp','wp','wp','wp'],  #7
+            ['wR','wN','wB','wQ','wK','wB','wN','wR']   #8
+        ]
+        self.whiteMove = True
+        self.moveLog = []
+        self.bKingLocation = (0,4)
+        self.wKingLocation = (7,4)
+
+        self.inCheck = False #kiểm tra chiếu tướng
+        self.pins = []
+        self.checks = []
+
+        self.enpassantPossible = ()
+
+        self.currentCastlingRight = castleRights(True, True, True, True)
+        self.castleRightsLog = [castleRights(self.currentCastlingRight.wks, self.currentCastlingRight.wqs,
+                                             self.currentCastlingRight.bks, self.currentCastlingRight.bqs)]
+
+        """    
+        self.checkmate = False
+        self.stalemate = False
+        """
+        self.moveFunc = {'p': self.getPawnMoves,
+                        'R': self.getRookMoves,
+                        'N': self.getKnightMoves,
+                        'B': self.getBishopMoves,
+                        'Q': self.getQueenMoves,
+                        'K': self.getKingMoves
+        }
+
+
+
+    def makeMove(self, move):
+
+        self.board[move.startRow][move.startCol] = '--'
+        self.board[move.endRow][move.endCol] = move.pieMoved
+        self.moveLog.append(move)
+        self.whiteMove = not self.whiteMove
+        #cập nhật vị trí vua trên bàn cờ
+        if move.pieMoved == 'wK':
+            self.wKingLocation = (move.endRow,move.endCol)
+        elif move.pieMoved == 'bK':
+            self.bKnightLocation = (move.endRow,move.endCol)
+
+        # phong cấp cho chốt
+        if move.isPawnPromotion:
+            self.board[move.endRow][move.endCol] = move.pieMoved[0] + 'Q'
+
+        # bắt chốt qua đường
+        """
+        Nếu tốt đen nhảy 2 ô từ hàng 7 lên hàng 5 thì tốt trắng ở cột bên cạnh nhưng cùng hàng với tốt đen có thể ăn chéo theo cách mà nó ăn tốt đen nếu tốt đen tiến 1 ô.
+        """
+        if move.isEnPassantMove:
+            self.board[move.startRow][move.endCol] = '--'
+
+        # cập nhật biến self.enpassantPossible
+        if move.pieMoved[1] == 'p' and abs(move.startRow - move.endRow) == 2:
+            self.enpassantPossible = ((move.startRow + move.endRow) // 2, move.startCol)
+        else:
+            self.enpassantPossible = ()
+
+        # nhập thành 
+        if move.isCastleMove:
+            if move.endCol - move.startCol == 2:  #nhập thành phía vua
+                self.board[move.endRow][move.endCol - 1] = self.board[move.endRow][move.endCol + 1]
+                self.board[move.endRow][move.endCol + 1] = '--'
+            else:# nhập thành phía hậu
+                self.board[move.endRow][move.endCol + 1] = self.board[move.endRow][move.endCol - 2]
+                self.board[move.endRow][move.endCol - 2] = '--'
+
+        # cập nhật bước nhập thành phải mỗi khi vua hoặc xe di chuyển
+        self.updateCastleRights(move)
+        self.castleRightsLog.append(castleRights(self.currentCastlingRight.wks, self.currentCastlingRight.wqs,
+                                                self.currentCastlingRight.bks, self.currentCastlingRight.bqs))
+        """
+        print('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
+        for count,log in enumerate(self.castleRightsLog):
+            print(count, log.wks, log.wqs, log.bks, log.bqs,',')
+        """
+
+    
+    """
+    Điều kiện nhập thành
+    1.  Quân vua chưa bao giờ bị di chuyển;
+    2.  Quân xe tham gia vào nhập thành cũng chưa bao giờ bị di chuyển;
+    3.  Không có quân nào nằm giữa vua và xe đó;
+    4.   Các ô mà vua sẽ di chuyển qua không nằm dưới sự kiểm soát (ô hay đường nằm trong tầm chiếu) của quân đối phương, cũng như việc nhập thành không làm được khi bị chiếu.
+    """
+
+
+    def updateCastleRights(self, move):
+        if move.pieMoved == 'wK':
+            self.currentCastlingRight.wks = False
+            self.currentCastlingRight.wqs = False
+        elif move.pieMoved == 'bK':
+            self.currentCastlingRight.bks = False
+            self.currentCastlingRight.bqs = False
+        elif move.pieMoved == 'wR':
+            if move.startRow == 7:
+                if move.startCol == 0:
+                    self.currentCastlingRight.wqs = False
+                if move.startCol == 7:
+                    self.currentCastlingRight.wks = False
+        elif move.pieMoved == 'bR':
+            if move.startRow == 0:
+                if move.startCol == 0:
+                    self.currentCastlingRight.bqs = False
+                if move.startCol == 7:
+                    self.currentCastlingRight.bks = False
+
+
+
+    def undoMove(self):
+        if len(self.moveLog) != 0:
+            move = self.moveLog.pop()
+            self.board[move.startRow][move.startCol] = move.pieMoved
+            self.board[move.endRow][move.endCol] = move.pieCaptured
+            self.whiteMove = not self.whiteMove
+            #update vị trí
+            if move.pieMoved == 'wK':
+                self.wKingLocation = (move.startRow,move.startCol)
+            elif move.pieMoved == 'bK':
+                self.bKnightLocation = (move.startRow,move.startCol)
+
+            #undo nước bắt chốt
+            if move.isEnPassantMove:
+                self.board[move.endRow][move.endCol] = '--'
+                self.board[move.startRow][move.endCol] = move.pieCaptured
+                self.enpassantPossible = (move.endRow, move.endCol)
+
+            #undo nước đi 2 ô của chốt
+            if move.pieMoved[1] == 'p' and abs(move.startRow - move.endRow) == 2:
+                self.enpassantPossible = ()
+
+            #undo nước nhập thành
+            self.castleRightsLog.pop() 
+                #lấy lại giá trị cuối bản log cho currentCastlingRight
+            newRights = self.castleRightsLog[-1]
+            self.currentCastlingRight = castleRights(newRights.wks, newRights.wqs, newRights.bks, newRights.bqs)
+            if move.isCastleMove:
+                if move.endCol - move.startCol == 2:
+                    self.board[move.endRow][move.endCol + 1] = self.board[move.endRow][move.endCol - 1]
+                    self.board[move.endRow][move.endCol - 1] = '--'
+                else:
+                    self.board[move.endRow][move.endCol - 2] = self.board[move.endRow][move.endCol + 1]
+                    self.board[move.endRow][move.endCol + 1] = '--'
+            
+    
+    def getValidMove(self):
+        moves = []
+        self.inCheck, self.pins, self.checks = self.checkForPinsAndCheck()
+
+        if self.whiteMove:
+            kingRow = self.wKingLocation[0]
+            kingCol = self.wKingLocation[1]
+        else:
+            kingRow = self.bKingLocation[0]
+            kingCol = self.bKingLocation[1]
+
+        if self.inCheck:
+            if len(self.checks) == 1: # chiếu 1 hướng
+                moves = self.getAllValidMove()
+                # kiểm tra quân cờ đang chiếu vua
+                check = self.checks[0]
+                checkRow = check[0]
+                checkCol = check[1]
+                pieChecking = self.board[checkRow][checkCol]
+
+                validSqs = []# những ô hợp lệ có thể di chuyển
+
+                # bị mã chiếu                 
+                if pieChecking[1] == 'N':
+                    validSqs = [(checkRow, checkCol)]
+                else:  
+                    for i in range(1,8):
+                        validSq = (kingRow + check[2] * i, kingCol + check[3] * i)
+                        validSqs.append(validSq)
+                        if validSq[0] == checkRow and validSq[1] == checkCol:
+                            break
+
+                #
+                for i in range(len(moves) - 1 , -1, -1):
+                    if moves[i].pieMoved[1] != 'K':
+                        if not (moves[i].endRow, moves[i].endCol) in validSqs:
+                            moves.remove(moves[i])
+                
+            else: # chiếu nhiều hướng vua phải di chuyển
+                self.getKingMoves(kingRow, kingCol, moves)
+        
+        else:
+            moves = self.getAllValidMove()
+            if self.whiteMove:
+                self.getCastleMoves(self.wKingLocation[0], self.wKingLocation[1], moves)
+            else:
+                self.getCastleMoves(self.bKingLocation[0], self.bKingLocation[1], moves)
+
+        return moves
+
+        """
+        for i in range(len(moves)-1,-1,-1):
+            self.makeMove(moves[i])
+
+            self.whiteMove = not self.whiteMove
+            if self.inCheck():
+                moves.remove(moves[i])
+            self.whiteMove = not self.whiteMove
+            self.undoMove()
+            
+        if len(moves) == 0:
+            if self.inCheck():
+                self.checkmate = True
+            else:
+                self.stalemate = True
+        else:
+            self.stalemate = False
+            self.checkmate = False
+        
+        return moves
+        """
+
+    def checkForPinsAndCheck(self):
+        pins =[]
+        checks = []
+        inCheck = False
+        if self.whiteMove:
+            enemy = 'b'
+            ally = 'w'
+            startRow = self.wKingLocation[0]
+            startCol = self.wKingLocation[1]
+        else:
+            enemy = 'w'
+            ally = 'b'
+            startRow = self.bKingLocation[0]
+            startCol = self.bKingLocation[1]
+        # kiểm tra theo hướng 
+        directions = ((-1,-1), (-1,0), (-1,1), (0,-1), (0,1), (1,-1), (1,0), (1,1))
+        for j in range(len(directions)):
+            d = directions[j]
+            possiblePin = ()
+            for i in range(1,8):
+                endRow = startRow + d[0] * i
+                endCol = startCol + d[1] * i
+                if 0 <= endRow < 8 and 0 <= endCol < 8:
+                    endPie = self.board[endRow][endCol]
+                    if endPie[0] == ally:
+                        if possiblePin == ():
+                            possiblePin = (endRow, endCol, d[0], d[1])
+                        else:
+                            break
+                    elif endPie[0] == enemy:
+                        type = endPie[1]
+                        if  (0 <= j <= 3 and type == 'R') or \
+                            (4 <= j <=7 and type == 'B') or \
+                            (i == 1 and type == 'p' and ((enemy == 'w' and 6 <= j <= 7) or (enemy == 'b' and 4 <= j <= 5 ))) or \
+                            (type == 'Q') or (i == 1 and type == 'K'):
+                            if possiblePin == ():
+                                inCheck = True
+                                checks.append((endRow, endCol, d[0], d[1]))
+                                break
+                            else:
+                                pins.append(possiblePin)
+                        else:
+                            break
+        # kiểm tra quân mã
+        moves = ((1,-2), (-1,-2), (1,2), (-1,2), (2,-1), (2,1), (-2,-1), (-2,1))
+        for m in moves:
+            endRow = startRow + m[0]
+            endCol = startCol + m[1]
+            if 0 <= endRow < 8 and 0 <= endCol < 8:
+                endPie = self.board[endRow][endCol]
+                if endPie[0] == enemy and endPie[1] == 'N':
+                    inCheck = True
+                    checks.append((endRow, endCol, m[0], m[1]))
+        
+        return inCheck, pins, checks
+
+    """
+    def inCheck(self):
+        if self.whiteMove:
+            return self.sqUnderAttack(self.wKingLocation[0], self.wKingLocation[1])
+        else:
+            return self.sqUnderAttack(self.bKingLocation[0], self.bKingLocation[1])
+"""
+    def sqUnderAttack(self, row, col):
+        self.whiteMove = not self.whiteMove
+        oopMoves = self.getAllValidMove()
+        self.whiteMove = not self.whiteMove
+
+        for move in oopMoves:
+            if move.endRow == row and move.endCol == col:
+                return True
+                break
+
+        return False
+    
+
+    def getAllValidMove(self):
+        moves = []
+        for row in range(DIMENSIONS):
+            for col in range(DIMENSIONS):
+                turn = self.board[row][col][0]
+                if (turn == 'w' and self.whiteMove) or (turn == 'b' and not self.whiteMove):
+                    pie = self.board[row][col][1]
+                    self.moveFunc[pie](row, col, moves)
+        
+        return moves
+
+    def getPawnMoves(self, row, col, moves):
+        piePinned = False
+        pinDirection = ()
+        for i in range(len(self.pins) - 1, -1,-1):
+            if self.pins[i][0] == row and self.pins[i][1] == col:
+                piePinned = True
+                pinDirection = (self.pins[i][2], self.pins[i][3]) 
+                self.pins.remove(self.pins[i])
+                break
+
+        # chốt trắng
+        if self.whiteMove:
+            if self.board[row - 1][col] == '--': 
+                if not piePinned or pinDirection == (-1, 0):
+                    moves.append(Move((row, col),(row - 1, col), self.board))       
+                    if row == 6 and self.board[row - 2][col] == '--':
+                        moves.append(Move((row, col),(row - 2, col), self.board))
+
+            # ăn trái 
+            if col - 1 >= 0: 
+                if self.board[row - 1][col - 1][0] == 'b':
+                    if not piePinned or pinDirection == (-1, -1):
+                        moves.append(Move((row , col ), (row - 1, col - 1), self.board))
+                elif (row - 1, col - 1) == self.enpassantPossible:  # bắt chốt qua đường
+                    moves.append(Move((row , col ), (row - 1, col - 1), self.board, isEnPassantMove = True))
+            # ăn phải
+            if col + 1 < DIMENSIONS:
+                if self.board[row - 1][col + 1][0] == 'b':
+                    if not piePinned or pinDirection == (-1, 1):
+                        moves.append(Move((row, col), (row - 1, col + 1), self.board))
+                elif (row - 1, col + 1) == self.enpassantPossible:  # bắt chốt qua đường
+                    moves.append(Move((row , col ), (row - 1, col + 1), self.board, isEnPassantMove = True))
+        #chốt đen 
+        else:
+            if self.board[row + 1][col] == '--':
+                if not piePinned or pinDirection == (1, 0):
+                    moves.append(Move((row, col),(row + 1, col), self.board))       
+                if row == 1 and self.board[row + 2][col] == '--':
+                    moves.append(Move((row, col),(row + 2, col), self.board))
+
+            # ăn trái
+            if col - 1 >= 0: 
+                if self.board[row + 1][col - 1][0] == 'w':
+                    if not piePinned or pinDirection == (1, -1):
+                        moves.append(Move((row , col ), (row +1, col -1), self.board))
+                elif (row + 1, col - 1) == self.enpassantPossible:  # bắt chốt qua đường
+                    moves.append(Move((row , col ), (row + 1, col - 1), self.board, isEnPassantMove = True))
+
+            # ăn phải
+            if col + 1 < DIMENSIONS:
+                if self.board[row + 1][col + 1][0] == 'w':
+                    if not piePinned or pinDirection == (1, 1):
+                        moves.append(Move((row, col), (row + 1, col + 1), self.board))
+                elif (row + 1, col + 1) == self.enpassantPossible:  # bắt chốt qua đường
+                    moves.append(Move((row , col ), (row + 1, col + 1), self.board, isEnPassantMove = True))
+
+    def getRookMoves(self, row, col, moves):
+        piePinned = False
+        pinDirection = ()
+        for i in range(len(self.pins) - 1, -1,-1):
+            if self.pins[i][0] == row and self.pins[i][1] == col:
+                piePinned = True
+                pinDirection = (self.pins[i][2], self.pins[i][3])
+                if self.board[row][col][1] != 'Q':
+                    self.pins.remove(self.pins[i])
+                break
+
+        directions = ((0,-1), (0,1), (-1,0), (1,0))
+        ally = 'w' if self.whiteMove else 'b'
+        for d in directions:
+            for i in range(1,8):
+                endRow = row + d[0] * i
+                endCol = col + d[1] * i
+                if 0 <= endRow < 8 and 0 <= endCol < 8:
+                    if not piePinned or pinDirection == d or pinDirection == (-d[0], -d[1]):
+                        endPie = self.board[endRow][endCol]
+                        if endPie == '--':
+                            moves.append(Move((row, col), (endRow, endCol), self.board))
+                        elif endPie[0] == ally:
+                            break
+                        else:
+                            moves.append(Move((row, col), (endRow, endCol), self.board))
+                            break
+                else:
+                    break
+
+    def getKnightMoves(self, row, col, moves):
+        piePinned = False
+        pinDirection = ()
+        for i in range(len(self.pins) - 1, -1,-1):
+            if self.pins[i][0] == row and self.pins[i][1] == col:
+                piePinned = True
+                pinDirection = (self.pins[i][2], self.pins[i][3])
+                self.pins.remove(self.pins[i])
+                break
+
+        directions = ((1,-2), (-1,-2), (1,2), (-1,2), (2,-1), (2,1), (-2,-1), (-2,1))
+        ally = 'w' if self.whiteMove else 'b'
+        for d in directions:
+            endRow = row + d[0]
+            endCol = col + d[1]
+            if 0 <= endRow < 8 and 0 <= endCol < 8:
+                if not piePinned:
+                    endPie = self.board[endRow][endCol]
+                    if endPie[0] != ally:
+                        moves.append(Move((row, col), (endRow, endCol), self.board))
+
+    def getBishopMoves(self, row, col, moves):
+        piePinned = False
+        pinDirection = ()
+        for i in range(len(self.pins) - 1, -1,-1):
+            if self.pins[i][0] == row and self.pins[i][1] == col:
+                piePinned = True
+                pinDirection = (self.pins[i][2], self.pins[i][3])
+                self.pins.remove(self.pins[i])
+                break
+
+        directions = ((-1,-1), (-1,1), (1,-1), (1,1))
+        ally = 'w' if self.whiteMove else 'b'
+        for d in directions:
+            for i in range(1, 8):
+                endRow = row + d[0] * i
+                endCol = col + d[1] * i
+                if 0 <= endRow < 8 and 0 <= endCol < 8:
+                    if not piePinned or pinDirection == d or pinDirection == (-d[0], -d[1]):
+                        endPie = self.board[endRow][endCol]
+                        if endPie == '--':
+                            moves.append(Move((row, col), (endRow, endCol), self.board))
+                        elif endPie[0] == ally:
+                            break
+                        else:
+                            moves.append(Move((row, col), (endRow, endCol), self.board))
+                            break
+                else:
+                    break
+                
+    def getQueenMoves(self, row, col, moves):
+        self.getBishopMoves(row, col, moves)
+        self.getRookMoves(row, col, moves)
+
+    def getKingMoves(self, row, col, moves):
+        directions = ((-1,-1), (-1,0), (-1,1), (0,-1), (0,1), (1,-1), (1,0), (1,1))
+        ally = 'w' if self.whiteMove else 'b'
+        for d in directions:
+            endRow = row + d[0]
+            endCol = col + d[1]
+            if 0 <= endRow < 8 and 0 <= endCol < 8:
+                endPie = self.board[endRow][endCol]
+                if endPie[0] != ally:
+                    if ally == 'w':
+                        self.wKingLocation = (endRow, endCol)
+                    else:
+                        self.bKingLocation = (endRow, endCol)
+
+                    inCheck, pins, checks = self.checkForPinsAndCheck()
+                    if not inCheck:
+                        moves.append(Move((row, col), (endRow, endCol), self.board))
+                    if ally == 'w':
+                        self.wKingLocation = (row, col)
+                    else:
+                        self.bKingLocation = (row, col)
+    
+    def getCastleMoves(self, row, col, moves):
+        if self.inCheck:
+            return
+        if (self.whiteMove and self.currentCastlingRight.wks) or (not self.whiteMove and self.currentCastlingRight.bks):
+            self.getKingsideCastleMoves(row, col, moves)
+        if (self.whiteMove and self.currentCastlingRight.wqs) or (not self.whiteMove and self.currentCastlingRight.bqs):
+            self.getQueensideCastleMoves(row, col, moves)
+
+    def getKingsideCastleMoves(self, row, col, moves):
+        if self.board[row][col + 1] == '--' and self.board[row][col + 2] == '--':
+            if not self.sqUnderAttack(row, col + 1) and not self.sqUnderAttack(row, col + 2):
+                moves.append(Move((row, col), (row, col + 2), self.board, isCastleMove = True))
+
+    def getQueensideCastleMoves(self, row, col, moves):
+        if self.board[row][col - 1] == '--' and self.board[row][col - 2] == '--' and self.board[row][col - 3] == '--':
+            if not self.sqUnderAttack(row, col - 1) and not self.sqUnderAttack(row, col - 2):
+                moves.append(Move((row, col), (row, col - 2), self.board, isCastleMove = True))
+
+class castleRights():
+    def __init__(self, wks, wqs, bks, bqs):
+        self.wks = wks
+        self.wqs = wqs
+        self.bks = bks
+        self.bqs = bqs
+
+
+class Move():
+
+    rankToRows  =   {'1': 7, '2': 6, '3': 5, '4': 4,
+                     '5': 3, '6': 2, '7': 1, '8': 0}
+
+    rowsToRanks =   {v: k for k, v in rankToRows.items()}
+
+    filesToCols =   {'a': 0, 'b': 1, 'c': 2, 'd': 3,
+                     'e': 4, 'f': 5, 'g': 6, 'h': 7}
+
+    colsToFiles =   {v: k for k, v in filesToCols.items()}
+    
+    def __init__(self, start, end, board, isEnPassantMove = False, isCastleMove = False):
+        # lấy thông tin của quân cờ di chuyển
+        self.startRow = start[0]
+        self.startCol = start[1]
+        self.endRow = end[0]
+        self.endCol = end[1]
+        self.pieMoved = board[self.startRow][self.startCol] 
+        self.pieCaptured = board[self.endRow][self.endCol]
+        self.moveID = self.startRow * 1000 + self.startCol * 100 + self.endRow * 10 + self.endCol
+
+        #phong cấp
+        self.isPawnPromotion = ((self.pieMoved == 'wp' and self.endRow == 0) or (self.pieMoved == 'bp' and self.endRow == 7))  
+        
+        #bắt chốt qua đường
+        self.isEnPassantMove = isEnPassantMove
+        if self.isEnPassantMove:
+            self.pieCaptured = 'wp' if self.pieMoved == 'bp' else 'bp'
+
+        #nhập thành 
+        self.isCastleMove = isCastleMove
+
+    def getChessNotation(self):
+        return self.getRankFile(self.startRow, self.startCol) + self.getRankFile(self.endRow, self.endCol)
+
+    def getRankFile(self,r,c):
+        return self.colsToFiles[c] + self.rowsToRanks[r]
+
+    def __eq__(self,other):
+        if isinstance(other, Move):
+            return self.moveID == other.moveID
+        return False
+
+    
