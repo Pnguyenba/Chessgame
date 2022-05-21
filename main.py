@@ -1,3 +1,4 @@
+from pickle import FALSE
 import pygame, pygame_menu, sys, ctypes
 from data.constants import *
 import engine
@@ -75,11 +76,16 @@ def animateMove(move, screen, board, clock):
         pygame.display.flip()
         clock.tick(FPS)
 
-def drawText(screen, text):
-    font = pygame.font.SysFont('tahoma', 26, True, True)
-    message = font.render(text, 0, pygame.Color(D_RED))
+def drawText(screen, text, ms_rs = False):
+    font = pygame.font.SysFont('tahoma', 30, True, False)
+    message = font.render(text, 0, pygame.Color(L_RED))
     messageLocation = pygame.Rect(0, 0, WIDTH, HEIGHT).move(WIDTH/2 - message.get_width()/2, HEIGHT/2 - message.get_height()/2)
     screen.blit(message, messageLocation)
+    if ms_rs:
+        msReset = font.render('Nhấn r để reset lại trò chơi!',0, pygame.Color(L_RED))
+        msResetLocation = pygame.Rect(0, 0, WIDTH, HEIGHT).move(WIDTH/2 - msReset.get_width()/2, HEIGHT/2 + msReset.get_height()/2)
+        screen.blit(msReset, msResetLocation)
+
 
 def menuScreen(screen):
     menu = pygame_menu.Menu('Welcome', 400, 300,
@@ -104,17 +110,14 @@ def GameStart(screen):
     gameOver = False
 
     while run:
-        if len(validMoves) == 0:
-            gameOver = True
-
-        if not gameOver:
-            for event in pygame.event.get():
-            #
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                # xử lí nhấp chuột
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+        for event in pygame.event.get():
+        #
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            # xử lí nhấp chuột
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if not gameOver:
                     location = pygame.mouse.get_pos()
                     col = location[0]//PIE_SIZE
                     row = location[1]//PIE_SIZE
@@ -138,31 +141,25 @@ def GameStart(screen):
                         if not moveMade:
                             playerClick = [pieSelected]
 
-                # xữ lí nhập từ phím
-                elif event.type == pygame.KEYDOWN:
-                    # undo move (phím : Z )
-                    if event.key == pygame.K_z:                   
-                        gsta.undoMove()
-                        moveMade = True
-                        animate = False
+            # xữ lí nhập từ phím
+            elif event.type == pygame.KEYDOWN:
+                # undo move (phím : Z )
+                if event.key == pygame.K_z:                   
+                    gsta.undoMove()
+                    moveMade = True
+                    animate = False
 
-                    if event.key == pygame.K_r:
-                        gsta = engine.GameState()
-                        animate = True
-                        pieSelected = ()
-                        playerClick = []
-                        validMoves = gsta.getValidMove()
-                        moveMade = False
-                    """
-                    if event.key == pygame.K_ESCAPE:
-                        menuScreen(screen)"""
-
-        else:
-            if gsta.whiteMove():
-                drawText(screen, 'Trắng bị chiếu tướng !(nhấn ''r'' để chơi lại')
-            else:
-                drawText(screen, 'Đen bị chiếu tướng !(nhấn ''r'' để chơi lại')
-
+                if event.key == pygame.K_r:
+                    gsta = engine.GameState()
+                    animate = True
+                    pieSelected = ()
+                    playerClick = []
+                    validMoves = gsta.getValidMove()
+                    moveMade = False
+                """
+                if event.key == pygame.K_ESCAPE:
+                    menuScreen(screen)"""
+      
         if moveMade:
             """if animate:
                 animateMove(gsta.moveLog[-1], screen, gsta.board, clock)"""
@@ -170,7 +167,26 @@ def GameStart(screen):
             print(gsta.inCheck())
             moveMade = False
 
-        drawGameState(screen,gsta, validMoves, pieSelected)  
+        drawGameState(screen,gsta, validMoves, pieSelected) 
+
+        if gsta.checkmate:
+            gameOver = True
+            if gsta.whiteMove:
+                drawText(screen, 'Trắng bị chiếu chết !',True)
+            else:
+                drawText(screen, 'Đen bị chiếu chết !',True)
+        elif gsta.stalemate:
+            if gsta.whiteMove:
+                drawText(screen, 'Trắng hết nước đi !',True)
+            else:
+                drawText(screen, 'Đen hết nước đi !',True)
+        elif gsta.inCheck():
+            if gsta.whiteMove:
+                drawText(screen, 'Trắng đang bị chiếu !!!')
+            else:
+                drawText(screen, 'Đen đang bị chiếu !!!')
+            
+
         clock.tick(FPS)
         pygame.display.flip()
 
