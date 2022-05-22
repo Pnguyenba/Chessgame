@@ -1,7 +1,7 @@
 from pickle import FALSE
 import pygame, pygame_menu, sys, ctypes
 from data.constants import *
-import engine
+import engine, AI
 
 pygame.init()    
 screen = pygame.display.set_mode((WIDTH , HEIGHT))
@@ -109,15 +109,18 @@ def GameStart(screen):
     moveMade = False
     gameOver = False
 
+    playerFirst = True # chọn người đi đầu tiên
+
+
     while run:
+        playerTurn = gsta.whiteMove
         for event in pygame.event.get():
-        #
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             # xử lí nhấp chuột
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if not gameOver:
+                if not gameOver and playerTurn:
                     location = pygame.mouse.get_pos()
                     col = location[0]//PIE_SIZE
                     row = location[1]//PIE_SIZE
@@ -135,7 +138,6 @@ def GameStart(screen):
                             if move == validMoves[i]:
                                 gsta.makeMove(validMoves[i])
                                 moveMade = True
-                                animate = True
                                 pieSelected = ()
                                 playerClick = []
                         if not moveMade:
@@ -144,14 +146,14 @@ def GameStart(screen):
             # xữ lí nhập từ phím
             elif event.type == pygame.KEYDOWN:
                 # undo move (phím : Z )
-                if event.key == pygame.K_z:                   
-                    gsta.undoMove()
-                    moveMade = True
-                    animate = False
+                if event.key == pygame.K_z:
+                    if playerTurn:                 
+                        gsta.undoMove()
+                        gsta.undoMove()
+                        moveMade = True
 
                 if event.key == pygame.K_r:
                     gsta = engine.GameState()
-                    animate = True
                     pieSelected = ()
                     playerClick = []
                     validMoves = gsta.getValidMove()
@@ -159,12 +161,20 @@ def GameStart(screen):
                 """
                 if event.key == pygame.K_ESCAPE:
                     menuScreen(screen)"""
-      
+        if not gameOver and not playerTurn:
+            BotMove = AI.findMovesNegaMax(gsta, validMoves)
+            gsta.makeMove(BotMove)
+            moveMade = True
+
         if moveMade:
             """if animate:
                 animateMove(gsta.moveLog[-1], screen, gsta.board, clock)"""
             validMoves = gsta.getValidMove()
-            print(gsta.inCheck())
+            if gsta.whiteMove:
+                print(' black turn :',end = '')
+            else:
+                print(' white turn :',end = '')
+            print(gsta.bKingLocation,', ',gsta.wKingLocation,', status: ',gsta.checkmate)
             moveMade = False
 
         drawGameState(screen,gsta, validMoves, pieSelected) 
@@ -177,9 +187,9 @@ def GameStart(screen):
                 drawText(screen, 'Đen bị chiếu chết !',True)
         elif gsta.stalemate:
             if gsta.whiteMove:
-                drawText(screen, 'Trắng hết nước đi !',True)
-            else:
                 drawText(screen, 'Đen hết nước đi !',True)
+            else:
+                drawText(screen, 'Trắng hết nước đi !',True)
         elif gsta.inCheck():
             if gsta.whiteMove:
                 drawText(screen, 'Trắng đang bị chiếu !!!')

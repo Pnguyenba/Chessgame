@@ -26,6 +26,7 @@ class GameState():
         self.checks = []
         """
 
+        self.endGameCount = 16
         self.enpassantPossible = ()
 
         self.currentCastling = castles(True, True, True, True)
@@ -44,12 +45,13 @@ class GameState():
 
 
 
-    def makeMove(self, move):       
+    def makeMove(self, move):   
         self.board[move.startRow][move.startCol] = '--'
         self.board[move.endRow][move.endCol] = move.pieMoved
         self.moveLog.append(move)
         self.whiteMove = not self.whiteMove
-
+        if move.pieCaptured != '--':
+            self.endGameCount -= 1
         #cập nhật vị trí vua trên bàn cờ
         if move.pieMoved == 'wK':
             self.wKingLocation = (move.endRow,move.endCol)
@@ -144,6 +146,8 @@ class GameState():
             self.board[move.startRow][move.startCol] = move.pieMoved
             self.board[move.endRow][move.endCol] = move.pieCaptured
             self.whiteMove = not self.whiteMove
+            if move.pieCaptured != '--':
+                self.endGameCount +=1
 
             #update vị trí
             if move.pieMoved == 'wK':
@@ -243,7 +247,10 @@ class GameState():
             if self.inCheck():
                 self.checkmate = True
             else:
-                self.stalemate = True       
+                self.stalemate = True
+        else:
+            self.checkmate = False
+            self.stalemate = False
         
         if self.whiteMove:
             self.getCastleMoves(self.wKingLocation[0],self.wKingLocation[1], moves)

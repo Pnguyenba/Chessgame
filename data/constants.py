@@ -1,9 +1,13 @@
 
 FPS = 60
 WIDTH, HEIGHT = 512,512
-
 DIMENSIONS = 8
 PIE_SIZE = WIDTH//DIMENSIONS
+INF = float('inf')
+
+# độ khó
+
+DEPTH = 4
 
 # MÀU
 BLACK = (0,0,0)
