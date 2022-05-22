@@ -1,5 +1,7 @@
 from pickle import FALSE
 import pygame, pygame_menu, sys, ctypes
+
+from sympy import capture
 from data.constants import *
 import engine, AI
 
@@ -53,6 +55,17 @@ def hightlightSq(screen, gsta, validMoves, sqSelected):
             for move in validMoves:
                 if move.startRow == row and move.startCol == col:
                     screen.blit(s, (move.endCol* PIE_SIZE, move.endRow * PIE_SIZE))
+
+def soundMove(Capture):
+    if not Capture:
+        pygame.mixer.music.load('data/sound/Move.WAV')
+        pygame.mixer.music.play()
+    else:
+        pygame.mixer.music.load('data/sound/Capture.WAV')
+        pygame.mixer.music.play()
+
+    
+
 
 def animateMove(move, screen, board, clock):
     global colors
@@ -108,7 +121,7 @@ def GameStart(screen):
     playerClick = []
     moveMade = False
     gameOver = False
-
+    captureMove = False
     playerFirst = True # chọn người đi đầu tiên
 
 
@@ -138,6 +151,8 @@ def GameStart(screen):
                             if move == validMoves[i]:
                                 gsta.makeMove(validMoves[i])
                                 moveMade = True
+                                if validMoves[i].pieCaptured != '--':
+                                    captureMove = True
                                 pieSelected = ()
                                 playerClick = []
                         if not moveMade:
@@ -161,6 +176,7 @@ def GameStart(screen):
                 """
                 if event.key == pygame.K_ESCAPE:
                     menuScreen(screen)"""
+        
         if not gameOver and not playerTurn:
             BotMove = AI.findMovesNegaMax(gsta, validMoves)
             gsta.makeMove(BotMove)
@@ -170,11 +186,14 @@ def GameStart(screen):
             """if animate:
                 animateMove(gsta.moveLog[-1], screen, gsta.board, clock)"""
             validMoves = gsta.getValidMove()
+            soundMove(captureMove)
+            captureMove = False
             if gsta.whiteMove:
                 print(' black turn :',end = '')
             else:
                 print(' white turn :',end = '')
             print(gsta.bKingLocation,', ',gsta.wKingLocation,', status: ',gsta.checkmate)
+
             moveMade = False
 
         drawGameState(screen,gsta, validMoves, pieSelected) 
