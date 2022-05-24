@@ -63,9 +63,10 @@ def soundMove(Capture):
     else:
         pygame.mixer.music.load('data/sound/Capture.WAV')
         pygame.mixer.music.play()
-
-    
-
+   
+def soundGameOver():
+    pygame.mixer.music.load('data\sound\GameOver.wav')
+    pygame.mixer.music.play()
 
 def animateMove(move, screen, board, clock):
     global colors
@@ -178,9 +179,12 @@ def GameStart(screen):
                     menuScreen(screen)"""
         
         if not gameOver and not playerTurn:
-            BotMove = AI.findMovesNegaMax(gsta, validMoves)
-            gsta.makeMove(BotMove)
-            moveMade = True
+            BotMove, count = AI.findMovesNegaMax(gsta, validMoves) 
+            if BotMove != None:
+                gsta.makeMove(BotMove)
+                print('count: ',count)
+                moveMade = True
+    
 
         if moveMade:
             """if animate:
@@ -202,19 +206,24 @@ def GameStart(screen):
             gameOver = True
             if gsta.whiteMove:
                 drawText(screen, 'Trắng bị chiếu chết !',True)
+                soundGameOver()
             else:
                 drawText(screen, 'Đen bị chiếu chết !',True)
+                soundGameOver()            
         elif gsta.stalemate:
             if gsta.whiteMove:
                 drawText(screen, 'Đen hết nước đi !',True)
+                soundGameOver()
             else:
                 drawText(screen, 'Trắng hết nước đi !',True)
+                soundGameOver()
+            
         elif gsta.inCheck():
             if gsta.whiteMove:
                 drawText(screen, 'Trắng đang bị chiếu !!!')
             else:
                 drawText(screen, 'Đen đang bị chiếu !!!')
-            
+
 
         clock.tick(FPS)
         pygame.display.flip()

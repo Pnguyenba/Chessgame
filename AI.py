@@ -109,13 +109,12 @@ def findMoves(gsta, validMoves):
     return bestMove
 
 def findMovesNegaMax(gsta, validMoves):
-    global bestMove
+    global bestMove, count
+    count = 0
     bestMove = None
     random.shuffle(validMoves)
-
     negaMax(gsta, validMoves, DEPTH, 1 if gsta.whiteMove else -1, -INF, INF)
-
-    return bestMove
+    return bestMove, count
 
 
 
@@ -151,7 +150,8 @@ def minimax(gsta, validMoves, depth, playerTurn):
         return value
 
 def negaMax(gsta, validMoves, depth, playerTurn, alpha, beta):
-    global bestMove
+    global bestMove, count
+    count +=1
     if depth == 0 :
         return playerTurn * evaluate(gsta)
 
