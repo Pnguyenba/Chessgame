@@ -143,23 +143,23 @@ def evaluate(gsta):
         else:
             return INF
     elif gsta.stalemate:
-        return 0
+        return -INF
 
     board = gsta.board
-    wMaterial = 0
+    value = 0
     bMaterial = 0
     for row in range(len(board)):
         for col in range(len(board[row])):
             sq = board[row][col]
             if sq[0] == 'w':
                 if sq[1] == 'K':
-                    wMaterial += pieValues[sq[1]] + bonusScore[sq[1]+ endGameCheck(gsta)][row][col]
+                    value += pieValues[sq[1]] + bonusScore[sq[1]+ endGameCheck(gsta)][row][col]
                 else: 
-                    wMaterial += pieValues[sq[1]] + bonusScore[sq[1]][row][col]
+                    value += pieValues[sq[1]] + bonusScore[sq[1]][row][col]
             if sq[0] == 'b':
                 if sq[1] == 'K':
-                    bMaterial += pieValues[sq[1]] + bonusScore[sq[1]+ endGameCheck(gsta)][row][col]
+                    value -= pieValues[sq[1]] + bonusScore[sq[1]+ endGameCheck(gsta)][row][col]
                 else:
-                    bMaterial += pieValues[sq[1]]  + bonusScore[sq[1]][row][col]
+                    value -= pieValues[sq[1]]  + bonusScore[sq[1]][row][col]
 
-    return wMaterial - bMaterial
+    return value

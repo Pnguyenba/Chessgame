@@ -182,8 +182,7 @@ def GameStart(screen):
             if BotMove != None:
                 gsta.makeMove(BotMove)
                 print('count: ',count)
-                moveMade = True
-    
+                moveMade = True 
 
         if moveMade:
             """if animate:
@@ -207,14 +206,12 @@ def GameStart(screen):
             if gsta.whiteMove:
                 drawText(screen, 'Đen hết nước đi !',gameOver)
             else:
-                drawText(screen, 'Trắng hết nước đi !',gameOver)
-            
+                drawText(screen, 'Trắng hết nước đi !',gameOver)          
         elif gsta.inCheck():
             if gsta.whiteMove:
                 drawText(screen, 'Trắng đang bị chiếu !!!')
             else:
                 drawText(screen, 'Đen đang bị chiếu !!!')
-
 
         clock.tick(FPS)
         pygame.display.flip()

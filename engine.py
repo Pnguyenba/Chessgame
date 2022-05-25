@@ -26,7 +26,7 @@ class GameState():
         self.checks = []
         """
 
-        self.endGameCount = 16
+        self.endGameCount = 24
         self.enpassantPossible = ()
 
         self.currentCastling = castles(True, True, True, True)

@@ -7,7 +7,7 @@ INF = float('inf')
 
 # độ khó
 
-DEPTH = 2
+DEPTH = 3
 
 # MÀU
 BLACK = (0,0,0)
