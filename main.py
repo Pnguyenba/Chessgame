@@ -100,7 +100,6 @@ def drawText(screen, text, ms_rs = False):
         msResetLocation = pygame.Rect(0, 0, WIDTH, HEIGHT).move(WIDTH/2 - msReset.get_width()/2, HEIGHT/2 + msReset.get_height()/2)
         screen.blit(msReset, msResetLocation)
 
-
 def menuScreen(screen):
     menu = pygame_menu.Menu('Welcome', 400, 300,
                         theme=pygame_menu.themes.THEME_BLUE)
@@ -191,32 +190,24 @@ def GameStart(screen):
                 animateMove(gsta.moveLog[-1], screen, gsta.board, clock)"""
             validMoves = gsta.getValidMove()
             soundMove(captureMove)
+            if gsta.checkmate or gsta.stalemate:
+                soundGameOver()
             captureMove = False
-            if gsta.whiteMove:
-                print(' black turn :',end = '')
-            else:
-                print(' white turn :',end = '')
-            print(gsta.bKingLocation,', ',gsta.wKingLocation,', status: ',gsta.checkmate)
-
             moveMade = False
 
-        drawGameState(screen,gsta, validMoves, pieSelected) 
+        drawGameState(screen,gsta, validMoves, pieSelected)
 
         if gsta.checkmate:
             gameOver = True
             if gsta.whiteMove:
-                drawText(screen, 'Trắng bị chiếu chết !',True)
-                soundGameOver()
+                drawText(screen, 'Trắng bị chiếu chết !',gameOver)
             else:
-                drawText(screen, 'Đen bị chiếu chết !',True)
-                soundGameOver()            
+                drawText(screen, 'Đen bị chiếu chết !',gameOver)
         elif gsta.stalemate:
             if gsta.whiteMove:
-                drawText(screen, 'Đen hết nước đi !',True)
-                soundGameOver()
+                drawText(screen, 'Đen hết nước đi !',gameOver)
             else:
-                drawText(screen, 'Trắng hết nước đi !',True)
-                soundGameOver()
+                drawText(screen, 'Trắng hết nước đi !',gameOver)
             
         elif gsta.inCheck():
             if gsta.whiteMove:

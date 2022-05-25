@@ -100,14 +100,6 @@ def endGameCheck(gsta):
 def getrandmmove(validMoves):
     return validMoves[random.randint(0, len(validMoves)-1)]
 
-
-def findMoves(gsta, validMoves):
-    global bestMove
-    bestMove = None
-    random.shuffle(validMoves)
-    minimax(gsta, validMoves, DEPTH, gsta.whiteMove)
-    return bestMove
-
 def findMovesNegaMax(gsta, validMoves):
     global bestMove, count
     count = 0
@@ -117,37 +109,6 @@ def findMovesNegaMax(gsta, validMoves):
     return bestMove, count
 
 
-
-def minimax(gsta, validMoves, depth, playerTurn):
-    global bestMove
-    if depth == 0 :
-        return evaluate(gsta)
-
-    if playerTurn:
-        value = -INF
-        for move in validMoves:
-            gsta.makeMove(move)
-            bestMoves = gsta.getValidMove()
-            temp = minimax(gsta, bestMoves, depth -1,False)
-            if temp > value:
-                value = temp
-                if depth == DEPTH:
-                    bestMove = move
-            gsta.undoMove()
-        return value
-
-    else:
-        value = INF
-        for move in validMoves:
-            gsta.makeMove(move)
-            bestMoves = gsta.getValidMove()
-            temp = minimax(gsta, bestMoves, depth -1,False)
-            if temp < value:
-                value = temp
-                if depth == DEPTH:
-                    bestMove = move
-            gsta.undoMove()
-        return value
 
 def negaMax(gsta, validMoves, depth, playerTurn, alpha, beta):
     global bestMove, count
@@ -159,7 +120,7 @@ def negaMax(gsta, validMoves, depth, playerTurn, alpha, beta):
     for move in validMoves:
         gsta.makeMove(move)
         bestMoves = gsta.getValidMove()
-        temp = negaMax(gsta, bestMoves, depth -1, -playerTurn, -beta, -alpha )
+        temp = -negaMax(gsta, bestMoves, depth -1, -playerTurn, -beta, -alpha )
         gsta.undoMove()
 
         if temp > value:
