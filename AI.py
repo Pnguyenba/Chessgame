@@ -99,17 +99,17 @@ def endGameCheck(gsta):
 
 
 def findMovesNegaMax(gsta, validMoves):
-    global bestMove, count
+    global bestMoveFound, count
     count = 0
     bestMove = None
     random.shuffle(validMoves)
     negaMax(gsta, validMoves, DEPTH, 1 if gsta.whiteMove else -1, -INF, INF)
-    return bestMove, count
+    return bestMoveFound, count
 
 
 
 def negaMax(gsta, validMoves, depth, playerTurn, alpha, beta):
-    global bestMove, count
+    global bestMoveFound, count
     count +=1
     if depth == 0 :
         return playerTurn * evaluate(gsta)
@@ -119,13 +119,14 @@ def negaMax(gsta, validMoves, depth, playerTurn, alpha, beta):
     for move in validMoves:
         gsta.makeMove(move)
         bestMoves = gsta.getAllValidMove()
+        orderMoves(bestMoves,gsta)
         temp = -negaMax(gsta, bestMoves, depth -1, -playerTurn, -beta, -alpha )
         gsta.undoMove()
 
         if temp > value:
                 value = temp
                 if depth == DEPTH:
-                    bestMove = move
+                    bestMoveFound = move
         alpha = max(alpha, value)           
         if alpha >= beta:
             break
@@ -159,3 +160,28 @@ def evaluate(gsta):
                     value -= pieValues[sq[1]]  + bonusScore[sq[1]][row][col]
 
     return value
+
+def orderMoves(moves, gsta):
+    moveScoreList = []
+    for move in moves:
+        moveScore = 0
+        pieMoved = move.pieMoved[1]
+        pieCaptured = move.pieCaptured[1]
+
+        if pieCaptured != '-':
+            moveScore += 10 * pieValues[pieCaptured] - pieValues[pieMoved]
+        
+        if move.isPawnPromotion:
+            moveScore += pieValues['Q']
+
+        # if gsta.sqUnderAttack(move.endRow, move.endCol):
+        #     moveScore -= pieValues[pieMoved]
+        
+        moveScoreList.append(moveScore)
+
+    for i in range(len(moves) - 1):
+        for j in range(i+1, 0, -1):
+            swap = j - 1
+            if moveScoreList[swap] < moveScoreList[j]:
+                moveScoreList[swap], moveScoreList[j] = moveScoreList[j], moveScoreList[swap]
+                moves[swap], moves[j] = moves[j], moves[swap]
