@@ -68,28 +68,6 @@ def soundGameOver():
     pygame.mixer.music.load('data\sound\GameOver.wav')
     pygame.mixer.music.play()
 
-def animateMove(move, screen, board, clock):
-    global colors
-    coords = []
-    dR = move.endRow - move.startRow
-    dC = move.endCol - move.startCol
-    famesPerSq = 20 if (move.endRow != move.startRow) and (move.endCol != move.startCol) else 10        
-    fameCount = (abs(dR) - abs(dC)) * famesPerSq +1
-    for fame in range(fameCount):
-        row, col = (move.startRow + dR*fame/fameCount, move.startCol + dC*fame/fameCount)
-        drawBoard(screen)
-        drawPiece(screen, board)
-        color = colors[(move.endRow - move.endCol) % 2]
-        endSq = pygame.Rect(move.endCol * PIE_SIZE,move.endRow * PIE_SIZE, PIE_SIZE, PIE_SIZE)
-        pygame.draw.rect(screen, color, endSq)
-
-        if move.pieCaptured != '--':
-            screen.blit(IMAGES[move.pieCaptured], endSq)
-
-        screen.blit(IMAGES[move.pieMoved], pygame.Rect( col * PIE_SIZE, row * PIE_SIZE, PIE_SIZE, PIE_SIZE))
-        pygame.display.flip()
-        clock.tick(FPS)
-
 def drawText(screen, text, ms_rs = False):
     font = pygame.font.SysFont('tahoma', 30, True, False)
     message = font.render(text, 0, pygame.Color(L_RED))
@@ -116,13 +94,11 @@ def GameStart(screen):
     validMoves = gsta.getValidMove()
     loadImages()
 
-    animate = True
     pieSelected = ()
     playerClick = []
     moveMade = False
     gameOver = False
     captureMove = False
-    playerFirst = True # chọn người đi đầu tiên
 
 
     while run:
