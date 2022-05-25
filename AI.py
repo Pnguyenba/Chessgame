@@ -97,8 +97,6 @@ def endGameCheck(gsta):
     else:
         return 'mid'                
 
-def getrandmmove(validMoves):
-    return validMoves[random.randint(0, len(validMoves)-1)]
 
 def findMovesNegaMax(gsta, validMoves):
     global bestMove, count
@@ -116,10 +114,11 @@ def negaMax(gsta, validMoves, depth, playerTurn, alpha, beta):
     if depth == 0 :
         return playerTurn * evaluate(gsta)
 
+
     value = -INF
     for move in validMoves:
         gsta.makeMove(move)
-        bestMoves = gsta.getValidMove()
+        bestMoves = gsta.getAllValidMove()
         temp = -negaMax(gsta, bestMoves, depth -1, -playerTurn, -beta, -alpha )
         gsta.undoMove()
 
@@ -133,8 +132,6 @@ def negaMax(gsta, validMoves, depth, playerTurn, alpha, beta):
 
     return value
 
-    
-
 
 def evaluate(gsta): 
     if gsta.checkmate:
@@ -147,7 +144,6 @@ def evaluate(gsta):
 
     board = gsta.board
     value = 0
-    bMaterial = 0
     for row in range(len(board)):
         for col in range(len(board[row])):
             sq = board[row][col]

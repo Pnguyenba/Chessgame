@@ -1,7 +1,4 @@
-from pickle import FALSE
-import pygame, pygame_menu, sys, ctypes
-
-from sympy import capture
+import pygame, pygame_menu, sys
 from data.constants import *
 import engine, AI
 
@@ -23,7 +20,6 @@ def drawGameState(screen, gsta,validMoves, sqSelected):
     drawPiece(screen,gsta.board)
     
 def drawBoard(screen):
-    global colors
     colors = [pygame.Color(WHITE), pygame.Color(GRAY)]
     for row in range(DIMENSIONS):
         for col in range(DIMENSIONS):
@@ -158,7 +154,7 @@ def GameStart(screen):
             if BotMove != None:
                 gsta.makeMove(BotMove)
                 print('count: ',count)
-                moveMade = True 
+                moveMade = True
 
         if moveMade:
             """if animate:
@@ -179,6 +175,7 @@ def GameStart(screen):
             else:
                 drawText(screen, 'Đen bị chiếu chết !',gameOver)
         elif gsta.stalemate:
+            gameOver = True
             if gsta.whiteMove:
                 drawText(screen, 'Đen hết nước đi !',gameOver)
             else:

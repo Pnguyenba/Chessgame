@@ -15,6 +15,17 @@ class GameState():
             ['wp','wp','wp','wp','wp','wp','wp','wp'],  #7
             ['wR','wN','wB','wQ','wK','wB','wN','wR']   #8
         ]
+        # self.board =[
+        #     #  a    b    c    d    e    f     g    h     
+        #     ['--','--','--','bR','--','--','--','--'],  #1
+        #     ['--','--','--','bR','bQ','--','--','--'],
+        #     ['--','--','--','bK','--','--','--','--'],  #3
+        #     ['--','--','--','--','--','--','--','--'],  #4
+        #     ['--','--','--','--','--','--','--','--'],  #5
+        #     ['--','--','--','wK','--','--','--','--'],  #6
+        #     ['--','--','--','--','--','--','--','--'],  #6
+        #     ['--','--','--','--','--','--','--','--'],  #6
+        # ]
         self.whiteMove = True
         self.moveLog = []
         self.bKingLocation = (0,4)
@@ -321,8 +332,7 @@ class GameState():
         
         return inCheck, pins, checks
         """
-
-        
+     
     def inCheck(self):
         if self.whiteMove:
             return self.sqUnderAttack(self.wKingLocation[0], self.wKingLocation[1])
